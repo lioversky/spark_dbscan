@@ -44,7 +44,7 @@ object DbscanDriver {
       val conf = new SparkConf()
         .setMaster(argsParser.args.masterUrl)
         .setAppName("DBSCAN")
-        .setJars(Array(argsParser.args.jar))
+//        .setJars(Array(argsParser.args.jar))
 
       if (argsParser.args.debugOutputPath.isDefined) {
         conf.set (DebugHelper.DebugOutputPath, argsParser.args.debugOutputPath.get)

@@ -18,7 +18,7 @@ object IOHelper {
     * @return A [[org.alitouka.spark.dbscan.RawDataSet]] populated with points
     */
   def readDataset (sc: SparkContext, path: String): RawDataSet = {
-    val rawData = sc.textFile (path)
+    val rawData = sc.textFile (path,10)
 
     rawData.map (
       line => {

@@ -4,7 +4,7 @@ import org.alitouka.spark.dbscan.DbscanSettings
 import org.alitouka.spark.dbscan.util.math.DoubleComparisonOperations._
 
 /** Represents lower and upper bound along each dimension. Very similar to the Range class
-  * 
+  * 表示维度的最大和最小值
   * @param lower A lower bound
   * @param upper An upper bound
   * @param includeHigherBound Indicates whether the upper bound should be included
@@ -67,7 +67,7 @@ private [dbscan] class BoundsInOneDimension (val lower: Double, val upper: Doubl
     result.reverse
   }
 
-  def length: Double = upper - lower
+  def length: Double = (upper - lower)*95000
 
   def extend (byLength: Double): BoundsInOneDimension = {
     val halfLength = byLength / 2

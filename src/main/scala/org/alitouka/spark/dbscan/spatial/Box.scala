@@ -20,9 +20,15 @@ private [dbscan] class Box (val bounds: Array[BoundsInOneDimension], val boxId: 
 
   def this (b: BoundsInOneDimension*) = this (b.toArray)
 
+  /**
+    * 按照最大差值的维度切分成numberOfSplits份
+    * @param numberOfSplits
+    * @param idGenerator
+    * @return
+    */
   def splitAlongLongestDimension (numberOfSplits: Int,
       idGenerator: BoxIdGenerator = new BoxIdGenerator(this.boxId)): Iterable[Box] = {
-
+//　找到差值最大的维度
     val (longestDimension, idx) = findLongestDimensionAndItsIndex()
 
     val beforeLongest = if (idx > 0) bounds.take (idx) else Array[BoundsInOneDimension] ()
@@ -69,6 +75,10 @@ private [dbscan] class Box (val bounds: Array[BoundsInOneDimension], val boxId: 
     "Box " + bounds.mkString(", ") + "; id = " + boxId + "; partition = " + partitionId
   }
 
+  /**
+    * 找到差值最大的维度和位置
+    * @return
+    */
   private [dbscan] def findLongestDimensionAndItsIndex ()
     :(BoundsInOneDimension, Int) = {
 

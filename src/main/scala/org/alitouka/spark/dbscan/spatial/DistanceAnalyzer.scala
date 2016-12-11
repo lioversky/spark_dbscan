@@ -32,7 +32,7 @@ private [dbscan] class DistanceAnalyzer (
 
     val pointsWithoutNeighbors = data
       .keys
-      .subtract(closePointCounts.keys)
+      .subtract(closePointCounts.keys,10)
       .map ( x => (x, 1L))
 
     val allPointCounts = closePointCounts.union (pointsWithoutNeighbors)

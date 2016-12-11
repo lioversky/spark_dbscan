@@ -84,8 +84,16 @@ class DbscanSettings extends Serializable {
   *
   */
 object DbscanSettings {
-  def getDefaultDistanceMeasure: DistanceMeasure = { new EuclideanDistance () }
+  def getDefaultDistanceMeasure: DistanceMeasure = new DistanceMeasure () {
+    override def compute(a: Array[Double], b: Array[Double]): Double = {
 
+      val lat = rad(a(1)) - rad(b(1))
+      val lng = rad(a(0)) - rad(b(0))
+      return 63781370 * 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(lat / 2), 2) + Math.cos(a(1) * Math.PI / 180.0) * Math.cos(b(1) * Math.PI / 180.0) * Math.pow(Math.sin(lng / 2), 2)))
+    }
+  }
+
+  private def rad(d: Double) = d * Math.PI / 180.0
   def getDefaultTreatmentOfBorderPoints: Boolean = { false }
 
   def getDefaultEpsilon: Double = { 1e-4 }

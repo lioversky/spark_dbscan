@@ -14,6 +14,12 @@ private [dbscan] class BoxCalculator (val data: RawDataSet) {
 
   val numberOfDimensions: Int = getNumberOfDimensions (data)
 
+  /**
+    *
+    * @param partitioningSettings
+    * @param dbscanSettings
+    * @return
+    */
   def generateDensityBasedBoxes (partitioningSettings: PartitioningSettings = new PartitioningSettings (),
                                  dbscanSettings: DbscanSettings = new DbscanSettings ()): (Iterable[Box], Box) = {
 
@@ -26,6 +32,7 @@ private [dbscan] class BoxCalculator (val data: RawDataSet) {
     val partialCounts: RDD[(BoxId, Long)] = data.mapPartitions {
       it => {
         val bt = broadcastBoxTree.value.clone ()
+//      计算每个Partition内的point　
         BoxCalculator.countPointsInOnePartition(bt, it)
       }
     }
@@ -50,6 +57,12 @@ private [dbscan] class BoxCalculator (val data: RawDataSet) {
 
   def calculateBoundingBox: Box = new Box (calculateBounds (data, numberOfDimensions).toArray)
 
+  /**
+    * 计算各维的最大最小值
+    * @param ds
+    * @param dimensions
+    * @return
+    */
   private [dbscan] def calculateBounds (ds: RawDataSet, dimensions: Int): List[BoundsInOneDimension] = {
     val minPoint = new Point (Array.fill (dimensions)(Double.MaxValue))
     val maxPoint = new Point (Array.fill (dimensions)(Double.MinValue))
@@ -106,7 +119,7 @@ private [dbscan] object BoxCalculator {
   }
 
   def countOnePoint (pt: Point, root: BoxTreeItemWithNumberOfPoints): Unit = {
-
+//  判断点是否在当前的box中，如果在numberOfPoints＋1
     if (root.box.isPointWithin(pt)) {
       root.numberOfPoints += 1
 

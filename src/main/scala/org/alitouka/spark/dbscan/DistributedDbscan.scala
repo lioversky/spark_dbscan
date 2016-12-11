@@ -38,6 +38,7 @@ class DistributedDbscan (
    */
   override protected def run(data: RawDataSet): DbscanModel = {
     val distanceAnalyzer = new DistanceAnalyzer (settings)
+//  数据分区
     val partitionedData = PointsPartitionedByBoxesRDD (data, partitioningSettings, settings)
 
     DebugHelper.doAndSaveResult(data.sparkContext, "boxes") {
@@ -47,8 +48,8 @@ class DistributedDbscan (
             Array (box.bounds(0).lower, box.bounds(1).lower, box.bounds(0).upper, box.bounds(1).upper).mkString (",")
           }
         }.toArray
-        
-        data.sparkContext.parallelize(boxBoundaries).saveAsTextFile(path)
+
+        data.sparkContext.parallelize(boxBoundaries,10).saveAsTextFile(path)
       }
     }
 
@@ -301,7 +302,7 @@ class DistributedDbscan (
     }
 
     val borderPointsToBeAssignedToClusters = if (!settings.treatBorderPointsAsNoise) {
-      pointsInAdjacentBoxes.mapPartitionsWithIndex {
+      var pr = pointsInAdjacentBoxes.mapPartitionsWithIndex {
         (idx, it) => {
           val pointsInPartition = it.map(_._2).toArray.sortBy(_.distanceFromOrigin)
           val bp = scala.collection.mutable.Map[PointId, ClusterId]()
@@ -329,7 +330,9 @@ class DistributedDbscan (
 
           bp.iterator
         }
-      }.collect().toMap
+      }
+
+        pr.collect().toMap
     }
     else {
       HashMap[PointId, ClusterId] ()
