@@ -34,9 +34,9 @@ object PartitioningSettings {
 
   def DefaultNumberOfSplitsAlongEachAxis: Int = 2
 
-  def DefaultNumberOfLevels: Int = 10
+  def DefaultNumberOfLevels: Int = 20
 
-  def DefaultNumberOfPointsInBox: Long = 500
+  def DefaultNumberOfPointsInBox: Long = 100000
 
   def DefaultNumberOfSplitsWithinPartition = 8
 
