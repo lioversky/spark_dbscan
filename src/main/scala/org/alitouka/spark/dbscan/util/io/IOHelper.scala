@@ -24,29 +24,29 @@ object IOHelper {
   def readDataset(sc: SparkContext, path: String): RawDataSet = {
     val rawData = sc.textFile(path, 10)
 
-//    rawData.map(
-//      line => {
-//        val arr = line.split(separator)
-//        new Point(new PointCoordinates(arr.slice(1, 3).map(_.toDouble)), pointId = arr(0).toLong)
-//      }
-//    )
-    rawData.mapPartitions(
-      it => {
-        val gson = new Gson()
-        val result = new java.util.ArrayList[Point]
-        it.flatMap(line => {
-          val map: java.util.Map[String, Object] = gson.fromJson(line, new TypeToken[java.util.Map[String, Object]]() {}.getType)
-          import scala.collection.JavaConversions._
-          for (entry <- map.entrySet()) {
-            var u = entry.getKey();
-            val timeMap = entry.getValue.asInstanceOf[java.util.Map[String, Object]]
-            val dataMap = timeMap.get("11").asInstanceOf[java.util.Map[String, Object]]
-            result.add(new Point(pointId = u.toLong, dataMap.get("lng").asInstanceOf[Double], dataMap.get("lat").asInstanceOf[Double]))
-          }
-          result
-        })
+    rawData.map(
+      line => {
+        val arr = line.split(separator)
+        new Point(new PointCoordinates(arr.slice(1, 3).map(_.toDouble)), pointId = arr(0).toLong)
       }
     )
+//    sc.textFile(path, 10).mapPartitions(
+//      it => {
+//        val gson = new Gson()
+//        val result = new java.util.ArrayList[Point]
+//        it.flatMap(line => {
+//          val map: java.util.Map[String, Object] = gson.fromJson(line, new TypeToken[java.util.Map[String, Object]]() {}.getType)
+//          import scala.collection.JavaConversions._
+//          for (entry <- map.entrySet()) {
+//            var u = entry.getKey();
+//            val timeMap = entry.getValue.asInstanceOf[java.util.Map[String, Object]]
+//            val dataMap = timeMap.get("11").asInstanceOf[java.util.Map[String, Object]]
+//            result.add(new Point(pointId = u.toLong, dataMap.get("lng").asInstanceOf[Double], dataMap.get("lat").asInstanceOf[Double]))
+//          }
+//          result
+//        })
+//      }
+//    )
 
   }
 
