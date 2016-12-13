@@ -302,7 +302,7 @@ class DistributedDbscan (
     }
 
     val borderPointsToBeAssignedToClusters = if (!settings.treatBorderPointsAsNoise) {
-      var pr = pointsInAdjacentBoxes.mapPartitionsWithIndex {
+      pointsInAdjacentBoxes.mapPartitionsWithIndex {
         (idx, it) => {
           val pointsInPartition = it.map(_._2).toArray.sortBy(_.distanceFromOrigin)
           val bp = scala.collection.mutable.Map[PointId, ClusterId]()
@@ -330,9 +330,7 @@ class DistributedDbscan (
 
           bp.iterator
         }
-      }
-
-        pr.collect().toMap
+      }.collect().toMap
     }
     else {
       HashMap[PointId, ClusterId] ()

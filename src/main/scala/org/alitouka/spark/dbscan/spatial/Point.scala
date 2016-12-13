@@ -26,6 +26,8 @@ class Point (
 
   def this (coords: Double*) = this (new PointCoordinates (coords.toArray))
 
+  def this (pointId: PointId,coords: Double*) = this (new PointCoordinates (coords.toArray),pointId)
+
   def withPointId (newId: PointId) = {
     new Point (this.coordinates, newId, this.boxId, this.distanceFromOrigin,
         this.precomputedNumberOfNeighbors,  this.clusterId)

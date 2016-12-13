@@ -43,7 +43,7 @@ private [dbscan] object PointIndexer {
 
       points.map (pt => {
 
-        val pointIndex = pointIndexer.getNextIndex
+//        val pointIndex = pointIndexer.getNextIndex
         val box = boxes.value.find( _.isPointWithin(pt) )
         val distanceFromOrigin = distanceMeasure.compute(pt.coordinates.toArray, origin.coordinates.toArray)
         val boxId = box match {
@@ -51,7 +51,7 @@ private [dbscan] object PointIndexer {
           case _ => 0 // throw an exception?
         }
 
-        val newPoint = new Point (pt.coordinates, pointIndex, boxId, distanceFromOrigin,
+        val newPoint = new Point (pt.coordinates, pt.pointId, boxId, distanceFromOrigin,
             pt.precomputedNumberOfNeighbors, pt.clusterId)
 
         (new PointSortKey (newPoint), newPoint)
