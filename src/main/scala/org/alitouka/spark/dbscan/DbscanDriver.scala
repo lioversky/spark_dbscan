@@ -70,6 +70,7 @@ object DbscanDriver {
 
       val clusteringResult = Dbscan.train(data, settings, partitioningSettings)
 
+      println("noise size:"+ clusteringResult.noisePoints.count())
       IOHelper.saveClusterPoint(clusteringResult, argsParser.args.outputPath)
 
 

@@ -219,7 +219,7 @@ class DistributedDbscan (
     val distanceAnalyzer = new DistanceAnalyzer (settings)
     val pointsCloseToBoxBounds = distanceAnalyzer.findPointsCloseToBoxBounds(partiallyClusteredData, boxes,
       settings.epsilon)
-
+    pointsCloseToBoxBounds.cache()
     DebugHelper.doAndSaveResult(partiallyClusteredData.sparkContext, "cpdb") {
       path => {
         pointsCloseToBoxBounds.map ( x =>  x.coordinates.mkString(",") + "," + x.clusterId ).saveAsTextFile(path)
