@@ -59,6 +59,7 @@ object DbscanDriver {
       val sc = new SparkContext(conf)
 
       val data = IOHelper.readDataset(sc, argsParser.args.inputPath)
+      data.persist()
       val settings = new DbscanSettings()
         .withEpsilon(argsParser.args.eps)
         .withNumberOfPoints(argsParser.args.minPts)
