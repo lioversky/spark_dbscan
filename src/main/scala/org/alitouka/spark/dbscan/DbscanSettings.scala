@@ -89,7 +89,7 @@ object DbscanSettings {
 
       val lat = rad(a(1)) - rad(b(1))
       val lng = rad(a(0)) - rad(b(0))
-      return 63781370 * 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(lat / 2), 2) + Math.cos(a(1) * Math.PI / 180.0) * Math.cos(b(1) * Math.PI / 180.0) * Math.pow(Math.sin(lng / 2), 2)))
+      return 6378137 * 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(lat / 2), 2) + Math.cos(a(1) * Math.PI / 180.0) * Math.cos(b(1) * Math.PI / 180.0) * Math.pow(Math.sin(lng / 2), 2)))
     }
   }
 
