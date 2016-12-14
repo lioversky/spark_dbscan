@@ -76,24 +76,27 @@ object IOHelper {
     }
     }).sum())
 
-    val resultRDD = rdd.flatMap({ case (a, b) => {
-      val result = new java.util.ArrayList[String]()
-      val list = b.toList
-      var i = 0
-      while (i < list.size) {
-        var j = i + 1
-        while (j < list.size) {
-          if (list(i) > list(j)) result.add(list(j) + "," + list(i) + ",11," + 0.5)
-          else result.add(list(i) + "," + list(j) + ",11," + 0.5)
-          j += 1
-        }
-        i += 1
-      }
-      result
-    }
-    })
+//    val resultRDD = rdd.flatMap({ case (a, b) => {
+//      val result = new java.util.ArrayList[String]()
+//      val list = b.toList
+//      var i = 0
+//      while (i < list.size) {
+//        var j = i + 1
+//        while (j < list.size) {
+//          if (list(i) > list(j)) result.add(list(j) + "," + list(i) + ",11," + 0.5)
+//          else result.add(list(i) + "," + list(j) + ",11," + 0.5)
+//          j += 1
+//        }
+//        i += 1
+//      }
+//      result
+//    }
+//    })
 
-    resultRDD.coalesce(50).saveAsTextFile(outputPath)
+    rdd.map({ case (a, b) => {
+      b.mkString(",")
+    }
+    }).saveAsTextFile(outputPath)
   }
 
   private[dbscan] def saveTriples(data: RDD[(Double, Double, Long)], outputPath: String) {
