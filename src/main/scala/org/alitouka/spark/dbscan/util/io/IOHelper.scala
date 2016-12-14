@@ -30,23 +30,23 @@ object IOHelper {
         new Point(new PointCoordinates(arr.slice(1, 3).map(_.toDouble)), pointId = arr(0).toLong)
       }
     )
-//    sc.textFile(path, 10).mapPartitions(
-//      it => {
-//        val gson = new Gson()
-//        val result = new java.util.ArrayList[Point]
-//        it.flatMap(line => {
-//          val map: java.util.Map[String, Object] = gson.fromJson(line, new TypeToken[java.util.Map[String, Object]]() {}.getType)
-//          import scala.collection.JavaConversions._
-//          for (entry <- map.entrySet()) {
-//            var u = entry.getKey();
-//            val timeMap = entry.getValue.asInstanceOf[java.util.Map[String, Object]]
-//            val dataMap = timeMap.get("11").asInstanceOf[java.util.Map[String, Object]]
-//            result.add(new Point(pointId = u.toLong, dataMap.get("lng").asInstanceOf[Double], dataMap.get("lat").asInstanceOf[Double]))
-//          }
-//          result
-//        })
-//      }
-//    )
+    //    sc.textFile(path, 10).mapPartitions(
+    //      it => {
+    //        val gson = new Gson()
+    //        val result = new java.util.ArrayList[Point]
+    //        it.flatMap(line => {
+    //          val map: java.util.Map[String, Object] = gson.fromJson(line, new TypeToken[java.util.Map[String, Object]]() {}.getType)
+    //          import scala.collection.JavaConversions._
+    //          for (entry <- map.entrySet()) {
+    //            var u = entry.getKey();
+    //            val timeMap = entry.getValue.asInstanceOf[java.util.Map[String, Object]]
+    //            val dataMap = timeMap.get("11").asInstanceOf[java.util.Map[String, Object]]
+    //            result.add(new Point(pointId = u.toLong, dataMap.get("lng").asInstanceOf[Double], dataMap.get("lat").asInstanceOf[Double]))
+    //          }
+    //          result
+    //        })
+    //      }
+    //    )
 
   }
 
@@ -70,16 +70,21 @@ object IOHelper {
   def saveClusterPoint(model: DbscanModel, outputPath: String): Unit = {
     val rdd = model.clusteredPoints.map(pt => (pt.clusterId, pt.pointId)).groupByKey()
     rdd.cache()
-    println("cluster size :"+rdd.count())
-    var resultRDD = rdd.flatMap({ case (a, b) => {
+    println("cluster size :" + rdd.count())
+    println("total size :" + rdd.map({ case (a, b) => {
+      b.size * (b.size - 1) / 2
+    }
+    }).sum())
+
+    val resultRDD = rdd.flatMap({ case (a, b) => {
       val result = new java.util.ArrayList[String]()
       val list = b.toList
       var i = 0
       while (i < list.size) {
         var j = i + 1
         while (j < list.size) {
-          if (list(i) > list(j)) result.add(list(j) +","+list(i)+",11,"+ 0.5)
-          else result.add(list(i)+","+ list(j)+",11,"+ 0.5)
+          if (list(i) > list(j)) result.add(list(j) + "," + list(i) + ",11," + 0.5)
+          else result.add(list(i) + "," + list(j) + ",11," + 0.5)
           j += 1
         }
         i += 1
@@ -87,8 +92,8 @@ object IOHelper {
       result
     }
     })
-    println(resultRDD.count())
-    resultRDD.saveAsTextFile(outputPath)
+
+    resultRDD.coalesce(50).saveAsTextFile(outputPath)
   }
 
   private[dbscan] def saveTriples(data: RDD[(Double, Double, Long)], outputPath: String) {
