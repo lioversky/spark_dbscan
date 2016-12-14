@@ -69,6 +69,8 @@ object IOHelper {
 
   def saveClusterPoint(model: DbscanModel, outputPath: String): Unit = {
     val rdd = model.clusteredPoints.map(pt => (pt.clusterId, pt.pointId)).groupByKey()
+    rdd.cache()
+    println("cluster size :"+rdd.count())
     var resultRDD = rdd.flatMap({ case (a, b) => {
       val result = new java.util.ArrayList[String]()
       val list = b.toList
