@@ -87,7 +87,7 @@ object IOHelper {
       result
     }
     })
-
+    println(resultRDD.count())
     resultRDD.saveAsTextFile(outputPath)
   }
 
