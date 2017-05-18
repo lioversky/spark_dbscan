@@ -24,10 +24,11 @@ object PointsPartitionedByBoxesRDD {
 
     val sc = rawData.sparkContext
     val boxCalculator = new BoxCalculator (rawData)
+//  boxs只包含box内点数大于numberOfPointsInBox的
     val (boxes, boundingBox) = boxCalculator.generateDensityBasedBoxes (partitioningSettings, dbscanSettings)
     val broadcastBoxes = sc.broadcast(boxes)
     var broadcastNumberOfDimensions = sc.broadcast (boxCalculator.numberOfDimensions)
-
+//  计算了每个点到origin的距离，为每个点增加boxid属性，未在大于numberOfPointsInBox的boxid为0
     val pointsInBoxes = PointIndexer.addMetadataToPoints(
       rawData,
       broadcastBoxes,

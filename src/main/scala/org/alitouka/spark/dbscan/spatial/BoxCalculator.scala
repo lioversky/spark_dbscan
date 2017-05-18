@@ -1,7 +1,8 @@
 package org.alitouka.spark.dbscan.spatial
 
-import org.alitouka.spark.dbscan.{PairOfAdjacentBoxIds, BoxId, DbscanSettings, RawDataSet}
+import org.alitouka.spark.dbscan.{BoxId, DbscanSettings, PairOfAdjacentBoxIds, RawDataSet}
 import org.alitouka.spark.dbscan.spatial.rdd.{BoxPartitioner, PartitioningSettings}
+import org.alitouka.spark.dbscan.util.debug.DebugHelper
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 
@@ -15,7 +16,7 @@ private [dbscan] class BoxCalculator (val data: RawDataSet) {
   val numberOfDimensions: Int = getNumberOfDimensions (data)
 
   /**
-    *
+    *　根据参数生成boxtree，计算每个box下对应的点，只保留box点数大于numberOfPointsInBox的box
     * @param partitioningSettings
     * @param dbscanSettings
     * @return
@@ -28,20 +29,22 @@ private [dbscan] class BoxCalculator (val data: RawDataSet) {
     val boxTree = BoxCalculator.generateTreeOfBoxes(rootBox, partitioningSettings, dbscanSettings)
 
     val broadcastBoxTree = data.sparkContext.broadcast(boxTree)
-
+    //      计算每个box内的point数
     val partialCounts: RDD[(BoxId, Long)] = data.mapPartitions {
       it => {
         val bt = broadcastBoxTree.value.clone ()
-//      计算每个Partition内的point　
+//      计算每个Partition内的point数
         BoxCalculator.countPointsInOnePartition(bt, it)
       }
     }
 
     val totalCounts = partialCounts.foldByKey(0)(_+_).collectAsMap()
+
+//  过滤出大于包含大于阈值点的box
     val boxesWithEnoughPoints = boxTree.flattenBoxes {
       x => totalCounts (x.box.boxId) >= partitioningSettings.numberOfPointsInBox
     }
-
+//  互为临近
     BoxCalculator.assignAdjacentBoxes (boxesWithEnoughPoints)
 
     (BoxPartitioner.assignPartitionIdsToBoxes(boxesWithEnoughPoints), rootBox)
@@ -174,6 +177,11 @@ private [dbscan] object BoxCalculator {
     }
   }
 
+  /**
+    * 相信box的组队
+    * @param boxesWithAdjacentBoxes
+    * @return
+    */
   private [dbscan] def generateDistinctPairsOfAdjacentBoxIds (boxesWithAdjacentBoxes: Iterable[Box]): Iterable[PairOfAdjacentBoxIds] = {
 
     for (b <- boxesWithAdjacentBoxes; ab <- b.adjacentBoxes; if b.boxId < ab.boxId)

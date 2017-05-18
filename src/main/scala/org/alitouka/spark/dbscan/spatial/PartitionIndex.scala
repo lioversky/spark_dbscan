@@ -63,13 +63,17 @@ private [dbscan] class PartitionIndex (val partitionBounds: Box,
     findPotentiallyClosePoints(pt).filter ( p => p.pointId != pt.pointId && calculateDistance (p, pt) <= dbscanSettings.epsilon )
   }
 
-
+  /**
+    * 判断可能离的近的点
+    * @param pt
+    * @return
+    */
   private [dbscan] def findPotentiallyClosePoints (pt: Point): Iterable[Point] = {
     val box1 = findBoxForPoint(pt, boxesTree)
     var result = ListBuffer[Point] ()
-
-    result ++= box1.points.filter ( p => p.pointId != pt.pointId && Math.abs(p.distanceFromOrigin - pt.distanceFromOrigin) <= dbscanSettings.epsilon )
-
+//  找到在一个box内并且不是同一个点
+//    result ++= box1.points.filter ( p => p.pointId != pt.pointId && Math.abs(p.distanceFromOrigin - pt.distanceFromOrigin) <= dbscanSettings.epsilon )
+    result ++= box1.points.filter ( p => p.pointId != pt.pointId && calculateDistance(p,pt) <= dbscanSettings.epsilon )
     if (this.isPointCloseToAnyBound(pt, box1.box, dbscanSettings.epsilon)) {
 
       box1.adjacentBoxes.foreach {
@@ -77,7 +81,8 @@ private [dbscan] class PartitionIndex (val partitionBounds: Box,
           val tempBox = Box (pt, largeBox)
 
           if (tempBox.isPointWithin(box2.box.centerPoint)) {
-            result ++= box2.points.filter ( p => Math.abs(p.distanceFromOrigin - pt.distanceFromOrigin) <= dbscanSettings.epsilon )
+//            result ++= box2.points.filter ( p => Math.abs(p.distanceFromOrigin - pt.distanceFromOrigin) <= dbscanSettings.epsilon )
+            result ++= box2.points.filter ( p => calculateDistance(p,pt) <= dbscanSettings.epsilon )
           }
         }
       }

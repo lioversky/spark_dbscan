@@ -7,7 +7,7 @@ private [dbscan] class CommonArgsParser [C <: CommonArgs] (val args: C, programN
 
   opt[String] ("ds-master")
     .foreach { args.masterUrl = _ }
-    .required ()
+//    .required ()
     .valueName ("<url>")
     .text ("Master URL")
 

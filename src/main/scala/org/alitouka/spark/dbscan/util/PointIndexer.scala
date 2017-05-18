@@ -39,11 +39,12 @@ private [dbscan] object PointIndexer {
 
     data.mapPartitionsWithIndex( (partitionIndex, points) => {
 
-      val pointIndexer = new PointIndexer (numPartitions, partitionIndex)
+//      val pointIndexer = new PointIndexer (numPartitions, partitionIndex)
 
       points.map (pt => {
-
+//
 //        val pointIndex = pointIndexer.getNextIndex
+//      找到pt对应的box
         val box = boxes.value.find( _.isPointWithin(pt) )
         val distanceFromOrigin = distanceMeasure.compute(pt.coordinates.toArray, origin.coordinates.toArray)
         val boxId = box match {

@@ -4,12 +4,15 @@ import org.alitouka.spark.dbscan.spatial.rdd.PartitioningSettings
 import org.alitouka.spark.dbscan.util.commandLine._
 import org.alitouka.spark.dbscan.util.debug.{Clock, DebugHelper}
 import org.alitouka.spark.dbscan.util.io.IOHelper
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 
 
 /** A driver program which runs DBSCAN clustering algorithm
   *
   */
+
+case class Data(uid: Long, tag_id: String, weight: Double,cat_id:String)
 object DbscanDriver {
 
   private[dbscan] class Args(var minPts: Int = DbscanSettings.getDefaultNumberOfPoints,
@@ -55,10 +58,11 @@ object DbscanDriver {
         conf.set(DebugHelper.DebugOutputPath, argsParser.args.debugOutputPath.get)
       }
 
+      val spark = SparkSession.builder().getOrCreate()
 
-      val sc = new SparkContext(conf)
 
-      val data = IOHelper.readDataset(sc, argsParser.args.inputPath)
+//      val data = IOHelper.readDataset(spark.sparkContext, argsParser.args.inputPath)
+      val data = IOHelper.readData(spark,argsParser.args.inputPath)
       data.cache()
       val settings = new DbscanSettings()
         .withEpsilon(argsParser.args.eps)
@@ -71,7 +75,7 @@ object DbscanDriver {
       val clusteringResult = Dbscan.train(data, settings, partitioningSettings)
 
       println("noise size:"+ clusteringResult.noisePoints.count())
-      IOHelper.saveClusterPoint(clusteringResult, argsParser.args.outputPath)
+      IOHelper.saveClusteringResult(clusteringResult, argsParser.args.outputPath)
 
 
       clock.logTimeSinceStart("Clustering")

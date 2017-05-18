@@ -8,7 +8,6 @@ import org.alitouka.spark.dbscan.spatial.rdd.{PointsInAdjacentBoxesRDD, PointsPa
 import scala.Some
 import org.alitouka.spark.dbscan.util.commandLine.CommonArgs
 import org.alitouka.spark.dbscan.util.debug.DebugHelper
-import org.apache.spark.Logging
 import scala.collection.immutable.HashMap
 
 /** Implementation of the DBSCAN algorithm which is capable of parallel processing of the input data.
@@ -27,7 +26,7 @@ import scala.collection.immutable.HashMap
 class DistributedDbscan (
   settings: DbscanSettings,
   partitioningSettings: PartitioningSettings = new PartitioningSettings ())
-  extends Dbscan (settings, partitioningSettings) with DistanceCalculation with Logging {
+  extends Dbscan (settings, partitioningSettings) with DistanceCalculation  {
 
   private [dbscan] implicit val distanceMeasure: DistanceMeasure = settings.distanceMeasure
 
@@ -38,24 +37,36 @@ class DistributedDbscan (
    */
   override protected def run(data: RawDataSet): DbscanModel = {
     val distanceAnalyzer = new DistanceAnalyzer (settings)
-//  数据分区
+//  Setp -1
+//  数据分区，partitionedData.box只为box点大于numberOfPointsInBox，分区数也为box点大于numberOfPointsInBox个数
     val partitionedData = PointsPartitionedByBoxesRDD (data, partitioningSettings, settings)
 
     DebugHelper.doAndSaveResult(data.sparkContext, "boxes") {
       path => {
         val boxBoundaries = partitionedData.boxes.map {
           box => {
-            Array (box.bounds(0).lower, box.bounds(1).lower, box.bounds(0).upper, box.bounds(1).upper).mkString (",")
+            box.partitionId+ ","+box.boxId //Array (box.bounds(0).lower, box.bounds(1).lower, box.bounds(0).upper, box.bounds(1).upper).mkString (",")
           }
         }.toArray
 
-        data.sparkContext.parallelize(boxBoundaries,10).saveAsTextFile(path)
+        data.sparkContext.parallelize(boxBoundaries).saveAsTextFile(path)
       }
     }
-
+    DebugHelper.doAndSaveResult(data.sparkContext, "partdata") {
+      path => {
+        partitionedData.mapPartitionsWithIndex {
+          (idx, it) => {
+            it.map ( x => idx +","+x._2.boxId)
+          }
+        }.saveAsTextFile(path)
+      }
+    }
+//  Step -2
+//  计算每个点有多少个临近的点（更新到NumberOfNeighbors中）
     val pointsWithNeighborCounts = distanceAnalyzer.countNeighborsForEachPoint(partitionedData)
     val broadcastBoxes = data.sparkContext.broadcast(partitionedData.boxes)
-
+//  Step-3
+//  执行DBSCAN算法，依次循环遍历所有未标记的点，记录核心点，遍历核心点，标记clusterId
     val partiallyClusteredData = pointsWithNeighborCounts.mapPartitionsWithIndex (
       (partitionIndex, it) => {
         val boxes = broadcastBoxes.value
@@ -74,7 +85,7 @@ class DistributedDbscan (
           .saveAsTextFile(path)
       }
     }
-
+//  Step-4
     val completelyClusteredData = mergeClustersFromDifferentPartitions(partiallyClusteredData,
       partitionedData.boxes)
 
@@ -111,11 +122,13 @@ class DistributedDbscan (
     val partitionIndex = new PartitionIndex (boundingBox, settings, partitioningSettings)
 
     partitionIndex.populate(points.values)
-
+//  循环遍历所有未被标记的点
     var startingPointWithId = findUnvisitedCorePoint(points, settings)
 
     while (startingPointWithId.isDefined) {
+//    依次遍历所有核心点并进行标记
       expandCluster(points, partitionIndex, startingPointWithId.get._2, settings)
+//    继续未被标记的点
       startingPointWithId = findUnvisitedCorePoint(points, settings)
     }
 
@@ -125,7 +138,7 @@ class DistributedDbscan (
   /** Expands a cluster. In contrast to the function described in http://en.wikipedia.org/wiki/DBSCAN ,
     * this function uses precomputed number of point's neighbors to determine whether the point
     * should be added to a cluster
-    *
+    *　
     * @param points All points
     * @param index An indexing data structure
     * @param startingPoint A point from which the expansion should start
@@ -140,19 +153,21 @@ class DistributedDbscan (
 
     startingPoint.transientClusterId = startingPoint.pointId
     startingPoint.visited = true
-
+//  遍历核心点
     while (!corePointsInCluster.isEmpty) {
       val currentPointId = corePointsInCluster.head
+//    所有未标记的邻居点
       val neighbors = findUnvisitedNeighbors(index, points (currentPointId), settings)
 
       neighbors.foreach {
         n =>
           n.visited = true
-
+//        邻居的邻居如果大于阈值，也被标记标记为核心点，下次遍历，并记录同一个ClusterId
           if (n.precomputedNumberOfNeighbors >= settings.numberOfPoints) {
             n.transientClusterId = startingPoint.transientClusterId
             corePointsInCluster += n.tempId
           }
+//        如果邻居没有阈值数的邻居，并且边界点不标记成噪音点，标记同一集群，但不是核心点
           else if (!settings.treatBorderPointsAsNoise) {
             n.transientClusterId = startingPoint.transientClusterId
           }
@@ -203,11 +218,11 @@ class DistributedDbscan (
 
 
   /** Merges clusters found in different partitions of a dataset
-    *
+    * 合并每个分区的cluster
     * At the moment when this method is called, all partitions of the dataset are processed. Each point in each partition
     * is assigned a cluster ID, but these IDs are different in each partition. The goal of this method is to detect
     * clusters which spread across different partitions and to assign cluster IDs properly
-    *
+    *　
     * @param partiallyClusteredData An RDD of points along with their sort keys. Each point is assigned a cluster ID but
     *                               these IDs are different in each partition
     * @param boxes A collection of boxes which represent partitions of the dataset
@@ -225,7 +240,8 @@ class DistributedDbscan (
         pointsCloseToBoxBounds.map ( x =>  x.coordinates.mkString(",") + "," + x.clusterId ).saveAsTextFile(path)
       }
     }
-
+//  生成最终clusterid与原clusterid的对应关系
+//  生成边界点与clusterid的对应关系
     val (mappings, borderPoints) = generateMappings (pointsCloseToBoxBounds, boxes)
 
     val broadcastMappings = partiallyClusteredData.sparkContext.broadcast(mappings)
@@ -243,7 +259,7 @@ class DistributedDbscan (
       it => {
         val m = broadcastMappings.value
         val bp = broadcastBorderPoints.value
-
+//      生成point最终的clusterid
         it.map ( x => reassignClusterId(x._2, m, bp) )
       }
     }
@@ -258,7 +274,7 @@ class DistributedDbscan (
       (idx, it) => {
         val pointsInPartition = it.map(_._2).toArray.sortBy(_.distanceFromOrigin)
         val pairs = HashSet[(ClusterId, ClusterId)] ()
-
+//      双层循环遍历，与前面的点对比
         for (i <- 1 until pointsInPartition.length) {
           var j = i-1
 
@@ -267,9 +283,9 @@ class DistributedDbscan (
           while (j >= 0 && pi.distanceFromOrigin - pointsInPartition(j).distanceFromOrigin <= settings.epsilon) {
 
             val pj = pointsInPartition(j)
-
+//          不在同一个box并且不为同一个cluster，并且距离近
             if (pi.boxId != pj.boxId && pi.clusterId != pj.clusterId && calculateDistance(pi, pj) <= settings.epsilon) {
-
+//
               val enoughCorePoints = if (settings.treatBorderPointsAsNoise) {
                 isCorePoint(pi, settings) && isCorePoint (pj, settings)
               }
@@ -300,7 +316,7 @@ class DistributedDbscan (
         pairs.iterator
       }
     }
-
+//  标记所有边界点和对应的clusterid
     val borderPointsToBeAssignedToClusters = if (!settings.treatBorderPointsAsNoise) {
       pointsInAdjacentBoxes.mapPartitionsWithIndex {
         (idx, it) => {
@@ -341,6 +357,11 @@ class DistributedDbscan (
 
     val temp = pairwiseMappings.collect ()
 
+    DebugHelper.doAndSaveResult (pairwiseMappings.sparkContext, "pairwiseMappings") {
+      path => {
+        pairwiseMappings.sparkContext.parallelize(temp).saveAsTextFile(path)
+      }
+    }
     temp.foreach {
       x => {
         processPairOfClosePoints(null, null, x._1, x._2, processedPairs, mappings)
@@ -349,7 +370,7 @@ class DistributedDbscan (
 
     val finalMappings = mappings.filter(_.size > 0).map ( x => (x, x.head) )
 
-    (finalMappings, borderPointsToBeAssignedToClusters)
+    (HashSet[(HashSet[ClusterId],ClusterId)] (), borderPointsToBeAssignedToClusters)
   }
 
   private def addBorderPointToCluster (pt1: Point,
@@ -429,7 +450,7 @@ class DistributedDbscan (
 
     val finalMappings = mappings.map ( x => (x, x.head) )
 
-    logInfo (s"Number of points: $numPoints ; iterations: $innerLoopIterations")
+//    logInfo (s"Number of points: $numPoints ; iterations: $innerLoopIterations")
 
     (finalMappings, borderPointsToBeAssignedToClusters)
   }
@@ -500,27 +521,33 @@ class DistributedDbscan (
     (newClusterId1, newClusterId2)
   }
 
-
+  /**
+    * 根据mappings和borderPoints来最终标记point的clusterid
+    * @param pt　当前点
+    * @param mappings　新clusterid与旧clusterid集合的对应关系
+    * @param borderPoints　边界点及其对应的clusterid
+    * @return　标记clusterid后的点
+    */
   private [dbscan] def reassignClusterId (
     pt: Point,
     mappings: HashSet[(HashSet[ClusterId], ClusterId)],
     borderPoints: Map [PointId, ClusterId]): Point = {
 
     var newClusterId = pt.clusterId
-
+//  如果当前点为边界点，ClusterId标记为边界对应的ClusterId
     if (borderPoints.contains(pt.pointId)) {
 
       // It is a border point which belongs to a cluster whose core points reside in a different box
       newClusterId = borderPoints (pt.pointId)
     }
-
+//  如果newClusterId在mappings的对应关系中，newClusterId标记为对应关系中的ClusterId
     val mapping = mappings.find ( _._1.contains(newClusterId) )
 
     mapping match {
       case m: Some[(HashSet[ClusterId], ClusterId)] => newClusterId = m.get._2
       case _ =>
     }
-
+//  如果newClusterId为未标记，置为噪音点
     if (newClusterId == DbscanModel.UndefinedCluster) {
 
       // If all attempts to find a suitable cluster id for a point failed,

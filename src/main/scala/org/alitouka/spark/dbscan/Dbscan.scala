@@ -4,7 +4,6 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 import org.apache.commons.math3.ml.distance.{EuclideanDistance, DistanceMeasure}
 import scala.reflect._
-import org.apache.spark.Logging
 import org.alitouka.spark.dbscan.spatial.DistanceAnalyzer
 import org.alitouka.spark.dbscan.spatial.rdd.PartitioningSettings
 
@@ -18,8 +17,7 @@ import org.alitouka.spark.dbscan.spatial.rdd.PartitioningSettings
 abstract class Dbscan protected (
   protected val settings: DbscanSettings,
   protected val partitioningSettings: PartitioningSettings = new PartitioningSettings ())
-  extends Serializable
-  with Logging {
+  extends Serializable {
 
   protected val distanceAnalyzer = new DistanceAnalyzer(settings)
 

@@ -48,6 +48,6 @@ private [dbscan] trait DistanceCalculation {
     // TODO: generalize for different distance measures
 
     val x = pt.coordinates(dimension)
-    Math.abs(x - bound.lower) <= threshold || Math.abs(x - bound.upper) <= threshold
+    BoundsInOneDimension.length(x, bound.lower, dimension) <= threshold || BoundsInOneDimension.length(x, bound.upper, dimension) <= threshold
   }
 }

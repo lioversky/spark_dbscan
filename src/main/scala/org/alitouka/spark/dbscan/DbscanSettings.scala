@@ -18,6 +18,7 @@ class DbscanSettings extends Serializable {
   def distanceMeasure: DistanceMeasure = _distanceMeasure
 
   /** A flag which indicates whether border points of clusters should be treated as noise
+    * 　边界点集群是否应该被视为噪音
     *
     * @return
     */
@@ -42,7 +43,7 @@ class DbscanSettings extends Serializable {
     *           [[org.apache.commons.math3.ml.distance.DistanceMeasure]] interface
     * @return This [[DbscanSettings]] object with modified distance measure
     */
-  def withDistanceMeasure (dm: DistanceMeasure) = {
+  def withDistanceMeasure(dm: DistanceMeasure) = {
     _distanceMeasure = dm
     this
   }
@@ -52,18 +53,18 @@ class DbscanSettings extends Serializable {
     * @param tbpn
     * @return
     */
-  def withTreatBorderPointsAsNoise (tbpn: Boolean) = {
+  def withTreatBorderPointsAsNoise(tbpn: Boolean) = {
     _treatBorderPointsAsNoise = tbpn
     this
   }
 
   /** Set epsilon parameter of the algorithm (distance within which points are considered close enough to be assigned
-    *  to one cluster)
+    * to one cluster)
     *
     * @param eps
     * @return
     */
-  def withEpsilon (eps: Double) = {
+  def withEpsilon(eps: Double) = {
     _epsilon = eps
     this
   }
@@ -74,29 +75,52 @@ class DbscanSettings extends Serializable {
     * @param np
     * @return
     */
-  def withNumberOfPoints (np: Int) = {
+  def withNumberOfPoints(np: Int) = {
     _numPoints = np
     this
   }
 }
-
+object test{
+  def main(args: Array[String]): Unit = {
+    println(DbscanSettings.getDefaultDistanceMeasure.compute(Array(100,100,100,100),Array(0,0,0,0)))
+  }
+}
 /** Provides default values for parameters of the DBSCAN algorithm
   *
   */
 object DbscanSettings {
-  def getDefaultDistanceMeasure: DistanceMeasure = new DistanceMeasure () {
-    override def compute(a: Array[Double], b: Array[Double]): Double = {
+  def getDefaultDistanceMeasure: DistanceMeasure = new DistanceMeasure() {
+    /*override def compute(a: Array[Double], b: Array[Double]): Double = {
 
       val lat = rad(a(1)) - rad(b(1))
       val lng = rad(a(0)) - rad(b(0))
       return 6378137 * 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(lat / 2), 2) + Math.cos(a(1) * Math.PI / 180.0) * Math.cos(b(1) * Math.PI / 180.0) * Math.pow(Math.sin(lng / 2), 2)))
+    }*/
+    override def compute(arr1: Array[Double], arr2: Array[Double]): Double = {
+
+//      val product = arr1.zip(arr2).map { case (a, b) => a * b }.sum
+//      val v1 = arr1.map(a => a * a).sum
+//      val v2 = arr2.map(a => a * a).sum
+//      val s = product / (Math.sqrt(v1) * Math.sqrt(v2))
+//      Math.sqrt(2 * (1 - s))
+
+      Math.sqrt(arr1.zip(arr2).map { case (a, b) => Math.pow(a/100 - b/100,2) }.sum)
+
     }
+
   }
 
   private def rad(d: Double) = d * Math.PI / 180.0
-  def getDefaultTreatmentOfBorderPoints: Boolean = { false }
 
-  def getDefaultEpsilon: Double = { 1e-4 }
+  def getDefaultTreatmentOfBorderPoints: Boolean = {
+    false
+  }
 
-  def getDefaultNumberOfPoints: Int = { 3 }
+  def getDefaultEpsilon: Double = {
+    1e-4
+  }
+
+  def getDefaultNumberOfPoints: Int = {
+    3
+  }
 }

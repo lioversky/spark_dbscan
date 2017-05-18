@@ -7,7 +7,6 @@ import org.apache.commons.math3.ml.distance.DistanceMeasure
 import org.alitouka.spark.dbscan._
 import scala.collection.mutable.ListBuffer
 import org.alitouka.spark.dbscan.util.debug.DebugHelper
-import org.apache.spark.Logging
 import scala.collection.mutable
 
 
@@ -15,8 +14,7 @@ private [dbscan] class DistanceAnalyzer (
   private val settings: DbscanSettings,
   private val partitioningSettings: PartitioningSettings = new PartitioningSettings ())
   extends Serializable
-  with DistanceCalculation
-  with Logging {
+  with DistanceCalculation{
 
 
   implicit val distanceMeasure: DistanceMeasure = settings.distanceMeasure
@@ -29,10 +27,13 @@ private [dbscan] class DistanceAnalyzer (
     val closePointCounts: RDD[(PointSortKey, Long)] = countClosePoints (data)
       .foldByKey(1)(_+_)
       .cache ()
-
+//    closePointCounts.sortBy(x=>x._2,false).take(100).foreach({case (key,c)=>{
+//      println(key.pointId+","+key.boxId+":"+c)
+//    }})
+//
     val pointsWithoutNeighbors = data
       .keys
-      .subtract(closePointCounts.keys,10)
+      .subtract(closePointCounts.keys)
       .map ( x => (x, 1L))
 
     val allPointCounts = closePointCounts.union (pointsWithoutNeighbors)
@@ -61,7 +62,7 @@ private [dbscan] class DistanceAnalyzer (
 
         pointsWithCounts.mapPartitionsWithIndex {
           (idx, it) => {
-            it.map ( x => x._2.coordinates.mkString (",") + "," + idx)
+            it.map ( x => x._2.coordinates.mkString (",") +","+x._2.boxId+ ","+x._2.precomputedNumberOfNeighbors)
           }
         }.saveAsTextFile(path)
       }
@@ -80,9 +81,11 @@ private [dbscan] class DistanceAnalyzer (
   def countClosePoints ( data: PointsPartitionedByBoxesRDD)
     :RDD[(PointSortKey, Long)] = {
 
+//  为每个Box内点找到最近的点
     val closePointsInsideBoxes = countClosePointsWithinEachBox(data)
+//  找到在BoxBounds阈值内距离的点
     val pointsCloseToBoxBounds = findPointsCloseToBoxBounds (data, data.boxes, settings.epsilon)
-
+//  不同box内的点
     val closePointsInDifferentBoxes = countClosePointsInDifferentBoxes (pointsCloseToBoxBounds, data.boxes,
       settings.epsilon)
 
@@ -105,13 +108,19 @@ private [dbscan] class DistanceAnalyzer (
     }
   }
 
+  /**
+    * 将it里面数据复制两份，一份放到PartitionIndex与boundingBox对应，另一份用于循环遍历判断与boundingBox内的数据距离
+    * @param it
+    * @param boundingBox
+    * @return　Partition内每个点的距离最近的个数
+    */
   def countClosePointsWithinPartition (it: Iterator[(PointSortKey, Point)], boundingBox: Box): Iterator[(PointSortKey, Long)] = {
 
     val (it1, it2) = it.duplicate
     val partitionIndex = new PartitionIndex (boundingBox, settings, partitioningSettings)
     val counts = mutable.HashMap [PointSortKey, Long] ()
     //val boxIds = mutable.HashSet [BoxId] ()
-
+//  将point与boundingBox　tree对应
     partitionIndex.populate(it1.map ( _._2 ))
 
 
@@ -128,7 +137,7 @@ private [dbscan] class DistanceAnalyzer (
 
     counts.iterator
   }
-
+//找到在BoxBounds阈值内距离的点
   def findPointsCloseToBoxBounds [U <: RDD[(PointSortKey, Point)]] (data: U, boxes: Iterable[Box], eps: Double)
     :RDD[Point] = {
 
@@ -144,6 +153,7 @@ private [dbscan] class DistanceAnalyzer (
 
   def countClosePointsInDifferentBoxes (data: RDD[Point], boxesWithAdjacentBoxes: Iterable[Box], eps: Double): RDD[(PointSortKey, Long)] = {
 
+//  数据在挨着的box键值对内
     val pointsInAdjacentBoxes: RDD[(PairOfAdjacentBoxIds, Point)] = PointsInAdjacentBoxesRDD (data, boxesWithAdjacentBoxes)
 
 

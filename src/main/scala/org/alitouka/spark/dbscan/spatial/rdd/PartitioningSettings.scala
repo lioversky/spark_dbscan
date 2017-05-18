@@ -32,11 +32,11 @@ class PartitioningSettings  (
 
 object PartitioningSettings {
 
-  def DefaultNumberOfSplitsAlongEachAxis: Int = 2
+  def DefaultNumberOfSplitsAlongEachAxis: Int = 4
 
-  def DefaultNumberOfLevels: Int = 20
+  def DefaultNumberOfLevels: Int = 8
 
-  def DefaultNumberOfPointsInBox: Long = 100000
+  def DefaultNumberOfPointsInBox: Long = 500
 
   def DefaultNumberOfSplitsWithinPartition = 8
 

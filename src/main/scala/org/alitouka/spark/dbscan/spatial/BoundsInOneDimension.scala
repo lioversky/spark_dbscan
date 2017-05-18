@@ -67,7 +67,7 @@ private [dbscan] class BoundsInOneDimension (val lower: Double, val upper: Doubl
     result.reverse
   }
 
-  def length: Double = (upper - lower)*95000
+  def length: Double = upper - lower//BoundsInOneDimension.length(upper , lower)
 
   def extend (byLength: Double): BoundsInOneDimension = {
     val halfLength = byLength / 2
@@ -116,5 +116,13 @@ private [dbscan] object BoundsInOneDimension {
 
   implicit def tupleOfDoublesAndBoolToBounds (x: (Double, Double, Boolean)): BoundsInOneDimension = {
     new BoundsInOneDimension(x._1, x._2, x._3)
+  }
+
+  def length(x: Double, y: Double, index: Int = 2): Double = {
+    if (index == 0) {
+      Math.abs((x - y) * 110000)
+    } else if (index == 1) {
+      Math.abs((x - y) * 85000)
+    } else Math.abs((x - y) * 95000)
   }
 }
